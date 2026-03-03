@@ -18,6 +18,8 @@ USER node
 ENV USER=node
 
 RUN curl -L https://nixos.org/nix/install | sh -s -- --no-daemon
+RUN git config --global user.name \"jappeace-sloth\"
+RUN git config --global user.email \"sloth@jappie.me\"
 
 ENV PATH=\"/home/node/.nix-profile/bin:\$PATH\"
 
@@ -33,6 +35,7 @@ docker run -it \
     -v /nix:/nix \
     -v "$(pwd)":/projects \
     -v "$(pwd)/../vibes":/projects/vibes \
+    -v "$HOME/.ssh/sloth:/home/node/.ssh/id_ed25519" \
     -v "$HOME/.claude.json":/home/node/.claude.json \
     -v "$HOME/.claude":/home/node/.claude \
     --rm \
