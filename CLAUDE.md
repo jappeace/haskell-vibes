@@ -19,6 +19,7 @@
 - A test should be less complex then the implementation.
 - Tests must assert behaviour and logic, not static content. Do not write tests that only verify text labels, column headings, or placeholder values exist — the compiler and type system already catch those.
 - A good test would fail if the logic were wrong. A bad test would only fail if you deleted or renamed a string literal.
+- We only test the current codebase, library could is assumed to work.
 
 # Workflow
 - If a task and the test suite don't align, ask for clarity
