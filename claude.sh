@@ -34,11 +34,11 @@ docker run -it \
     -e GH_TOKEN=$(cat ~/.gh_token) \
     --user $(id -u):$(id -g) \
     -v /nix:/nix \
-    -v "$(pwd)":/projects \
+    -v "$(pwd)/root":/projects \
     -v "$(pwd)/../vibes":/projects/vibes \
     -v "$HOME/.ssh/sloth:/home/node/.ssh/id_ed25519" \
-    -v "$HOME/.claude.json":/home/node/.claude.json \
-    -v "$HOME/.claude":/home/node/.claude \
+    -v "$(pwd)/instances/kyle.json":/home/node/.claude.json \
+    -v "$(pwd)/instances/kyle":/home/node/.claude \
     --rm \
     claude-env \
     bash

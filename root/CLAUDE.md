@@ -29,9 +29,7 @@
 - Be sure to run `cabal build` when you're done making a series of code changes, this can be intermediately run as well to ensure things are consistent. Do not finish the task until the typechecker passes.
 - Repair all newly introduced warnings.
 - If we're implementing any new function or behaviour, add a test to assert it works.
-- At the end of a task and it typechecks, run `cabal test` to make sure no 
-  known regressions occurred.
-- Commit your changes, message should contain the summary of the done work, the first line should be synopsis of that.
+- At the end of a task and it typechecks, run `nix-build nix/ci.nix` to ensure CI passes, if that doesn't exist run `cabal test`.
+- Commit your changes, message should contain the summary of the done work, the first line should be synopsis of that. At the end of the message include the prompt, also include the used tokens.
 - Push the changes, don't force push.
 - Open a pull request with the changes on github.
-- Once completed write the prompt and a summery of the work with date and time to tasks.md. Every task should have it's own section. Write the consumed tokens in here as well.
