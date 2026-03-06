@@ -12,9 +12,9 @@
 - To search for Haskell modules, types, or documentation, ALWAYS query the Hoogle web API using curl:
   `curl -s "https://hoogle.haskell.org/?mode=json&hoogle=YOUR_QUERY"`
 - To read actual Hackage documentation, NEVER fetch raw HTML. Instead, use `w3m` via nix-shell to dump the clean text of the page:
-  `nix-shell -p w3m --run "w3m -dump https://hackage.haskell.org/package/<package_name>"`
+  `w3m -dump https://hackage.haskell.org/package/<package_name>`
 - To read a specific module's documentation on Hackage:
-  `nix-shell -p w3m --run "w3m -dump https://hackage.haskell.org/package/<package_name>/docs/<Module-Name-With-Dashes>.html"`
+  `w3m -dump https://hackage.haskell.org/package/<package_name>/docs/<Module-Name-With-Dashes>.html`
 
 # Style
 - Avoid using wildcards on pattern matching if possible, always write out all cases.
