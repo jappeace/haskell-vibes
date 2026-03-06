@@ -13,14 +13,14 @@ docker run -it \
     -e TERM=xterm-256color \
     -e COLORTERM=truecolor \
     -e GH_TOKEN="$(cat ~/.gh_token)" \
-    -e HOME="/tmp" \
+    -e HOME="/home/claude" \
     --user "$(id -u):$(id -g)" \
     -v /nix/store:/nix/store:ro \
-    -v "$(pwd)/root":/projects \
-    -v "$(pwd)/../vibes":/projects/vibes \
+    -v "$(pwd)/root":/home/claude \
+    -v "$(pwd)/../vibes":/home/claude/vibes \
     -v "$HOME/.ssh/sloth:/tmp/.ssh/id_ed25519" \
-    -v "$(pwd)/instances/kyle.json":/tmp/.claude.json \
-    -v "$(pwd)/instances/kyle":/tmp/.claude \
+    -v "$(pwd)/instances/kyle.json":/home/claude/.claude.json \
+    -v "$(pwd)/instances/kyle":/home/claude/.claude \
     --rm \
     claude-env:latest \
     claude
