@@ -1,6 +1,11 @@
 let
   sources = import ./npins/default.nix;
   pkgs = import sources.nixpkgs { config.allowUnfree = true; };
+  systemGitConfig = pkgs.writeTextDir "etc/gitconfig" ''
+    [user]
+      name = jappeace-sloth
+      email = sloth@jappie.me
+  '';
 in
 
 pkgs.dockerTools.buildImage {
@@ -10,6 +15,7 @@ pkgs.dockerTools.buildImage {
   copyToRoot = pkgs.buildEnv {
     name = "image-root";
     paths = [
+      systemGitConfig
       pkgs.bashInteractive
       pkgs.coreutils
       pkgs.gh
