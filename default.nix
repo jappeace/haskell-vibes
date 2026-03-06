@@ -1,25 +1,32 @@
-{ pkgs ? import <nixpkgs> {} }:
+let
+  sources = import ./npins/default.nix;
+  pkgs = import sources.nixpkgs { config.allowUnfree = true; };
+in
 
 pkgs.dockerTools.buildImage {
   name = "claude-env";
   tag = "latest";
 
-  contents = [
-    pkgs.bashInteractive
-    pkgs.coreutils
-    pkgs.nodejs_22
-    pkgs.gh
-    pkgs.git
-    pkgs.curl
-    pkgs.xz
-    pkgs.nix
-    pkgs.cacert
-    pkgs.gnugrep
-    pkgs.gnused
-    pkgs.which
-    pkgs.claude
-
-  ];
+  copyToRoot = pkgs.buildEnv {
+    name = "image-root";
+    paths = [
+      pkgs.bashInteractive
+      pkgs.coreutils
+      pkgs.gh
+      pkgs.python3
+      pkgs.git
+      pkgs.curl
+      pkgs.xz
+      pkgs.nix
+      pkgs.w3m
+      pkgs.cacert
+      pkgs.gnugrep
+      pkgs.gnused
+      pkgs.which
+      pkgs.claude-code
+    ];
+    pathsToLink = [ "/" ];
+  };
 
   config = {
     Cmd = [ "/bin/bash" ];
