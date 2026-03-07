@@ -12,11 +12,16 @@ pkgs.dockerTools.buildImage {
   name = "claude-env";
   tag = "latest";
   extraCommands = ''
-    # Create the directory first
-    mkdir -p home/claude
-    # Note: Use relative paths (home/claude) or absolute (/home/claude)
-    # but ensure the parent exists before chown
+    # Create necessary directories
+    mkdir -p home/claude etc tmp
+
+    # Set permissions
     chown -R 1000:100 home/claude
+    chmod 1777 tmp
+
+    # Define user identity for Nix/Bash
+    echo "claude:x:1000:100:Claude:/home/claude:${pkgs.bashInteractive}/bin/bash" > etc/passwd
+    echo "claude:x:100:claude" > etc/group
   '';
 
   copyToRoot = pkgs.buildEnv {
@@ -42,12 +47,18 @@ pkgs.dockerTools.buildImage {
   };
 
   config = {
-    Cmd = [ "/bin/bash" ];
+    Entrypoint = [ "${pkgs.claude-code}/bin/claude" ];
     Env = [
-      "PATH=/bin"
+      "HOME=/home/claude"
+      "USER=claude"
+      "TERM=xterm-256color"
+      "COLORTERM=truecolor"
+      "NODE_OPTIONS=--dns-result-order=ipv4first"
       "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-      "NIX_PAGER=cat"
+      # IMPORTANT: Since you mount the socket, 'daemon' is correct here
+      "NIX_REMOTE=daemon"
+      "PATH=/bin:/nix/var/nix/profiles/default/bin"
     ];
-    WorkingDir = "/projects";
+    WorkingDir = "/home/claude";
   };
 }
