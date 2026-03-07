@@ -6,6 +6,13 @@ let
       name = jappeace-sloth
       email = sloth@jappie.me
   '';
+  systemPasswd = pkgs.writeTextDir "etc/passwd" ''
+    claude:x:1000:100:Claude:/home/claude:${pkgs.bashInteractive}/bin/bash
+  '';
+
+  systemGroup = pkgs.writeTextDir "etc/group" ''
+    claude:x:100:claude
+  '';
 in
 
 pkgs.dockerTools.buildImage {
@@ -18,15 +25,13 @@ pkgs.dockerTools.buildImage {
     # Set permissions
     chown -R 1000:100 home/claude
     chmod 1777 tmp
-
-    # Define user identity for Nix/Bash
-    echo "claude:x:1000:100:Claude:/home/claude:${pkgs.bashInteractive}/bin/bash" > etc/passwd
-    echo "claude:x:100:claude" > etc/group
   '';
 
   copyToRoot = pkgs.buildEnv {
     name = "image-root";
     paths = [
+      systemPasswd
+      systemGroup
       systemGitConfig
       pkgs.bashInteractive
       pkgs.coreutils

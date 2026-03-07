@@ -34,6 +34,7 @@ docker run -it \
     -v "$(pwd)/instances/${INSTANCE_NAME}.json":/home/claude/.claude.json \
     -v "$(pwd)/instances/${INSTANCE_NAME}":/home/claude/.claude \
     -v "$(pwd)/CLAUDE.md":/home/claude/.claude/CLAUDE.md \
+    -v "$(pwd)/../vibes":/home/claude/vibes \
     --rm \
     claude-env:latest \
     claude
