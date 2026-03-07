@@ -1,3 +1,5 @@
+# generally the goal is to prevent dumb errors so claude
+# can start cooking faster. (uses fewer tokens too)
 let
   sources = import ./npins/default.nix;
   pkgs = import sources.nixpkgs { config.allowUnfree = true; };
@@ -63,6 +65,8 @@ pkgs.dockerTools.buildImage {
       # IMPORTANT: Since you mount the socket, 'daemon' is correct here
       "NIX_REMOTE=daemon"
       "PATH=/bin:/nix/var/nix/profiles/default/bin"
+
+      "NIX_PATH=nixpkgs=${pkgs.path}" # fixes import <nixpkgs> errors
     ];
     WorkingDir = "/home/claude";
   };
