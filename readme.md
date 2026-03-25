@@ -7,6 +7,8 @@ This allows you to run multiple instances at the same time as well.
 Allowing you to bypass the need to make it smart or lazy.
 
 Claude doesn't get to see how we start the container.
+It could (probably unintentionally) use the knowledge of the runtime setup to escape.
+Having to find this public repo is just one more step.
 
 https://jappie.me/haskell-vibes.html
 
