@@ -21,6 +21,9 @@ Important: after each conversation compacting reread CLAUDE.md
 The vibes folder is shared between the host and other instances. 
 It's good for cloning work in.
 
+# Skills
+- Read all files in `~/skills/` at the start of relevant tasks and follow their guidance.
+
 # Style
 - Avoid using wildcards on pattern matching if possible, always write out all cases.
 - Always add type signatures to top level bindings, try make types as restrictive as possible.
