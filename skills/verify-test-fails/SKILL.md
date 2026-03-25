@@ -1,6 +1,6 @@
 ---
 name: verify-test-fails
-description: Verify that new tests actually fail on master before the change is applied. Use when writing tests for bug fixes or new features, especially in TDD workflows, to catch tests that pass for the wrong reason.
+description: Before committing test code, verify new tests fail on master. Trigger when adding test files, adding test cases to existing files, implementing TDD, fixing bugs with regression tests, or adding tests for new features. Also trigger when running cabal test or nix-build after writing tests — the verification step should happen before the final commit.
 ---
 
 # Verify tests fail on master
