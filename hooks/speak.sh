@@ -1,6 +1,10 @@
 #!/bin/bash
 # Speak Claude's response summary aloud and display via cowsay
 
+# Kill any previous speech first
+pkill -f "piper --speaker" 2>/dev/null
+pkill cvlc 2>/dev/null
+
 INPUT=$(cat)
 TRANSCRIPT=$(echo "$INPUT" | jq -r '.transcript_path // empty')
 
@@ -23,15 +27,8 @@ cowfiles=("vader-koala" "tux" "turtle" "kitty" "meow" "llama" "kosh"
 rng=$((RANDOM % 9))
 cow_rng=$((RANDOM % 13))
 
-# Speak via piper + cvlc (background, with lock to prevent overlap)
-# cvlc can't read WAV from stdin (needs seekable file for header), so use a temp file
-(
-  flock 200
-  TMPWAV=$(mktemp /tmp/speak_XXXXXX.wav)
-  echo "$SUMMARY" | piper --speaker 1 -f "$TMPWAV" 2>/dev/null
-  cvlc --play-and-exit --aout pulse --gain 0.05 "$TMPWAV" 2>/dev/null
-  rm -f "$TMPWAV"
-) 200>/tmp/piper_fortune.lock &
+# Speak via piper + cvlc in background
+(echo "$SUMMARY" | piper --speaker 1 -f - | cvlc --play-and-exit --aout pulse --gain 0.05 - 2>/dev/null) &
 
 # Visual display to stderr
 echo "$SUMMARY" | cowsay -W 35 ${cow_modes[$rng]} -f ${cowfiles[$cow_rng]} >&2
