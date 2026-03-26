@@ -11,7 +11,10 @@ if [ -z "$SUMMARY" ]; then
   SUMMARY="Task completed."
 fi
 
-# Speak via piper + cvlc (background, with lock to prevent overlap)
+# Kill any previous speech before starting new one
+pkill vlc 2>/dev/null
+
+# Speak via piper + cvlc
 echo "$SUMMARY" | piper --speaker 1 -f - | cvlc --play-and-exit --aout pulse --gain 0.05 - 2>/dev/null
 
 exit 0
