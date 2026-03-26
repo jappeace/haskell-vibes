@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Speak Claude's response summary aloud and display via cowsay
 
 INPUT=$(cat)
@@ -24,9 +24,13 @@ rng=$((RANDOM % 9))
 cow_rng=$((RANDOM % 13))
 
 # Speak via piper + cvlc (background, with lock to prevent overlap)
+# cvlc can't read WAV from stdin (needs seekable file for header), so use a temp file
 (
   flock 200
-  echo "$SUMMARY" | piper --speaker 1 -f - | cvlc --play-and-exit --gain 0.05 - 2>/dev/null
+  TMPWAV=$(mktemp /tmp/speak_XXXXXX.wav)
+  echo "$SUMMARY" | piper --speaker 1 -f "$TMPWAV" 2>/dev/null
+  cvlc --play-and-exit --aout pulse --gain 0.05 "$TMPWAV" 2>/dev/null
+  rm -f "$TMPWAV"
 ) 200>/tmp/piper_fortune.lock &
 
 # Visual display to stderr
