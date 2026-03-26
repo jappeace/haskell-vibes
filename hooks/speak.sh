@@ -11,10 +11,18 @@ if [ -z "$SUMMARY" ]; then
   SUMMARY="Task completed."
 fi
 
+# Select voice based on instance name
+case "$INSTANCE_NAME" in
+  stan) VOICE="joe" ;;
+  kyle) VOICE="ryan" ;;
+  *)    VOICE="amy" ;;
+esac
+export PIPER_MODEL="${PIPER_VOICES}/${VOICE}/medium/en_US-${VOICE}-medium.onnx"
+
 # Kill any previous speech before starting new one
 pkill vlc 2>/dev/null
 
 # Speak via piper + cvlc
-echo "$SUMMARY" | piper --speaker 1 -f - | cvlc --play-and-exit --aout pulse --gain 0.05 - 2>/dev/null
+echo "$SUMMARY" | piper -f - | cvlc --play-and-exit --aout pulse --gain 0.05 - 2>/dev/null
 
 exit 0

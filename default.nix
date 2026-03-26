@@ -27,8 +27,36 @@ let
     ];
   };
 
+  piper-joe-voice = pkgs.fetchgit {
+    url = "https://huggingface.co/rhasspy/piper-voices";
+    rev = "834f23262168a7e809179465e4113f23f5a7d1f7";
+    hash = "sha256-nhZrIjbVBl4vGnRdIh3AOgB38QAyGfdxav2qVxusu+k=";
+    fetchLFS = true;
+    sparseCheckout = [
+      "en/en_US/joe/medium/en_US-joe-medium.onnx"
+      "en/en_US/joe/medium/en_US-joe-medium.onnx.json"
+    ];
+  };
+
+  piper-ryan-voice = pkgs.fetchgit {
+    url = "https://huggingface.co/rhasspy/piper-voices";
+    rev = "834f23262168a7e809179465e4113f23f5a7d1f7";
+    hash = "sha256-55OHFCO5lQl8XMiqvzA+IhjwpUiUB8gtho2QUfLXX+c=";
+    fetchLFS = true;
+    sparseCheckout = [
+      "en/en_US/ryan/medium/en_US-ryan-medium.onnx"
+      "en/en_US/ryan/medium/en_US-ryan-medium.onnx.json"
+    ];
+  };
+
+  piper-voices = pkgs.symlinkJoin {
+    name = "piper-voices";
+    paths = [ piper-amy-voice piper-joe-voice piper-ryan-voice ];
+  };
+
   piper = pkgs.writeShellScriptBin "piper" ''
-    ${pkgs.piper-tts}/bin/piper -m ${piper-amy-voice}/en/en_US/amy/medium/en_US-amy-medium.onnx "$@"
+    MODEL="''${PIPER_MODEL:-${piper-voices}/en/en_US/amy/medium/en_US-amy-medium.onnx}"
+    ${pkgs.piper-tts}/bin/piper -m "$MODEL" "$@"
   '';
 in
 
@@ -87,6 +115,7 @@ pkgs.dockerTools.buildImage {
       "PATH=/bin:/nix/var/nix/profiles/default/bin"
 
       "NIX_PATH=nixpkgs=${pkgs.path}" # fixes import <nixpkgs> errors
+      "PIPER_VOICES=${piper-voices}/en/en_US"
     ];
     WorkingDir = "/home/claude";
   };
