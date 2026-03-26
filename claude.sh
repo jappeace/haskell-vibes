@@ -35,8 +35,11 @@ docker run -it \
     -v "$(pwd)/instances/${INSTANCE_NAME}":/home/claude/.claude \
     -v "$(pwd)/settings.json":/home/claude/.claude/settings.json \
     -v "$(pwd)/CLAUDE.md":/home/claude/.claude/CLAUDE.md \
+    -v "/run/user/$(id -u)/pulse:/run/user/1000/pulse" \
+    -e PULSE_SERVER="unix:/run/user/1000/pulse/native" \
     -v "$(pwd)/../vibes":/home/claude/vibes \
     -v "$(pwd)/skills":/home/claude/.claude/skills \
+    -v "$(pwd)/hooks":/home/claude/.claude/hooks \
     --rm \
     claude-env:latest \
     claude
