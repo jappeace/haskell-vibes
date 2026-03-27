@@ -41,8 +41,8 @@ let
   cabal-voice-src = pkgs.fetchFromGitHub {
     owner = "jappeace-sloth";
     repo = "cabal-voice";
-    rev = "06749ad16f367c57ec8483982892e4d4943de4eb";
-    hash = "sha256-Kaud6XcNWuAMwC3bU1O4WuqMi6tVM313nvSU3lVw1SY=";
+    rev = "c25a5dbd46d28becd5edddb53ec81d6688e2ffc1";
+    hash = "sha256-0U9uVssZ+qgOk7SeXBICS3EF08pBKJVP+puOXTZGHqc=";
   };
 
   piper-cabal-voice = pkgs.runCommand "piper-cabal-voice" {} ''
