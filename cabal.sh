@@ -2,4 +2,4 @@
 
 set -xe
 
-./claude.sh kyle
+./claude.sh cabal
