@@ -60,6 +60,14 @@ let
     MODEL="''${PIPER_MODEL:-${piper-voices}/en/en_US/amy/medium/en_US-amy-medium.onnx}"
     ${pkgs.piper-tts}/bin/piper -m "$MODEL" "$@"
   '';
+
+  # Python environment with piper-tts for phoneme alignment extraction
+  piperPython = pkgs.python3.withPackages (_ps: [
+    pkgs.piper-tts
+  ]);
+
+  # Face animation binary (viseme-based lip-sync)
+  face-speak = pkgs.haskellPackages.callCabal2nix "face-speak" ./face-speak {};
 in
 
 pkgs.dockerTools.buildImage {
@@ -83,7 +91,7 @@ pkgs.dockerTools.buildImage {
       pkgs.bashInteractive
       pkgs.coreutils
       pkgs.gh
-      pkgs.python3
+      piperPython
       pkgs.git
       pkgs.curl
       pkgs.xz
@@ -100,6 +108,8 @@ pkgs.dockerTools.buildImage {
       pkgs.sox
       pkgs.util-linux
       pkgs.jq
+      face-speak
+      pkgs.gtk4
     ];
     pathsToLink = [ "/" ];
   };

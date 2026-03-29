@@ -1,5 +1,5 @@
 #!/bin/bash
-# Speak Claude's response summary aloud
+# Speak Claude's response summary aloud with viseme face animation
 
 INPUT=$(cat)
 echo "$(date): Hook invoked" >> /tmp/speak_hook.log
@@ -33,22 +33,33 @@ case "$INSTANCE_NAME" in
 esac
 export PIPER_MODEL="${PIPER_VOICES}/${VOICE}/medium/en_US-${VOICE}-medium.onnx"
 
-# Kill any previous speech before starting new one
+# Kill any previous speech and face animation before starting new one
 pkill vlc 2>/dev/null
+pkill face-speak 2>/dev/null
 
-# Speak via piper + cvlc (CABAL voice gets SoX DSP post-processing)
+WAV_PATH="/tmp/tts-${INSTANCE_NAME}.wav"
+JSON_PATH="/tmp/tts-${INSTANCE_NAME}.json"
+
+# Generate WAV + phoneme timing via piper-speak.py
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 if [ "$VOICE" = "cabal" ]; then
-  echo "$SUMMARY" | piper -f - \
-    | sox -t wav - -t wav - \
-        phaser 0.7 0.7 3 0.5 0.5 -t \
-        flanger 1 2 0 71 0.5 sine 25 linear \
-        equalizer 200 1.0q +4 \
-        equalizer 6000 1.0q -3 \
-        reverb 15 50 70 \
-        norm -1 \
-    | cvlc --play-and-exit --aout pulse --gain 0.05 - 2>/dev/null
+  # Cabal voice: generate raw WAV first, then apply SoX effects
+  echo "$SUMMARY" | python3 "$HOOK_DIR/piper-speak.py" "/tmp/tts-raw-${INSTANCE_NAME}.wav" "$JSON_PATH"
+  sox "/tmp/tts-raw-${INSTANCE_NAME}.wav" "$WAV_PATH" \
+      phaser 0.7 0.7 3 0.5 0.5 -t \
+      flanger 1 2 0 71 0.5 sine 25 linear \
+      equalizer 200 1.0q +4 \
+      equalizer 6000 1.0q -3 \
+      reverb 15 50 70 \
+      norm -1
 else
-  echo "$SUMMARY" | piper -f - | cvlc --play-and-exit --aout pulse --gain 0.05 - 2>/dev/null
+  echo "$SUMMARY" | python3 "$HOOK_DIR/piper-speak.py" "$WAV_PATH" "$JSON_PATH"
 fi
+
+# Launch face animation (visual only, background)
+face-speak "$JSON_PATH" &
+
+# Play audio via cvlc
+cvlc --play-and-exit --aout pulse --gain 0.05 "$WAV_PATH" 2>/dev/null
 
 exit 0
