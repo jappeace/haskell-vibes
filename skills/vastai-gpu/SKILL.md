@@ -56,12 +56,32 @@ vastai search offers 'gpu_name=RTX_3090 num_gpus=1 reliability>0.95 inet_down>10
 
 ## Creating an Instance
 
+### Preferred: Nix Docker image (pure, reproducible)
+
 ```bash
-vastai create instance OFFER_ID --image pytorch/pytorch:2.4.1-cuda12.4-cudnn9-devel --disk 60 --ssh
+vastai create instance OFFER_ID \
+  --image ghcr.io/jappeace-sloth/scottish-tts-training:nix-cuda \
+  --disk 100 --ssh
 ```
 
-- The `--ssh` flag is required for SSH access
-- `pytorch/pytorch:2.4.1-cuda12.4-cudnn9-devel` is a good base image for training
+**Always prefer a Nix-built Docker image over pip.** Nix verifies ALL dependencies
+at build time — if it builds, everything is present. Pip-based images have caused
+multiple training failures from missing/conflicting deps (onnx, torchmetrics, numpy).
+
+Build with: `nix-build docker.nix` (see `/home/claude/vibes/scottish-tts/docker.nix`)
+
+### Fallback: PyTorch base image (pip-based)
+
+```bash
+vastai create instance OFFER_ID --image pytorch/pytorch:2.1.0-cuda11.8-cudnn8-runtime --disk 100 --ssh
+```
+
+- Only use this if no Nix image is available
+- Requires extensive pip install + patching at runtime (fragile)
+
+### Notes
+
+- The `--ssh` flag enables SSH access (Vast.ai's `.launch` script handles sshd)
 - Instance takes 2-10 minutes to go from `loading` to `running`
 
 ## Polling Instance Status
@@ -173,8 +193,9 @@ vastai destroy instance INSTANCE_ID
    ```bash
    apt-get update && apt-get install -y espeak-ng libespeak-ng-dev build-essential
    ```
+   With a Nix image, all system packages are baked in at build time — no apt-get needed.
 
-5. **Working directory**: All files go under `/workspace/` which persists for the instance lifetime.
+5. **Working directory**: All files go under `/workspace/` which persists for the instance lifetime. With Nix images, use `/root/` instead (Nix containers don't have `/workspace/`).
 
 6. **PyTorch 2.6+ PosixPath issue**: Loading old checkpoints fails with `Unsupported global: GLOBAL pathlib.PosixPath`. Fix by converting PosixPaths to strings:
    ```python
@@ -188,6 +209,43 @@ vastai destroy instance INSTANCE_ID
    ```python
    torch.onnx.export(..., dynamo=False)
    ```
+
+8. **Nix + pip don't mix**: Never pip install into a Nix Python environment. The Nix store is read-only and pip will error with "externally-managed-environment". If you absolutely must use pip alongside Nix Python, use `--target /some/writable/dir` and prepend that to PYTHONPATH. But prefer putting everything in Nix.
+
+9. **Vast.ai container infrastructure expectations**: The Vast.ai `.launch` script expects these to exist in the container:
+   - `/var/log`, `/var/run`, `/run`, `/tmp` — log and runtime directories
+   - `/usr/sbin/sshd` — hardcoded sshd path (symlink to actual binary)
+   - `/etc/ssh/ssh_host_*` — SSH host keys (generate at image build time)
+   - `/etc/passwd` with `root` and `sshd` users (sshd needs privsep user)
+   - `/etc/group` with matching groups
+   - `/etc/bash.bashrc` — sourced by bash login
+   - `/var/empty` — sshd privilege separation directory (chmod 755)
+   Nix's `dockerTools.buildLayeredImage` doesn't provide any of these by default.
+   Use `extraCommands` to create them. See `docker.nix` for a working example.
+
+10. **Nix CUDA builds — restrict architectures**: Building torch with `cudaSupport = true` compiles magma from source. By default Nix builds for ALL GPU architectures (sm_75 through sm_120 = ~3492 CUDA kernel files, ~13 hours). **Always restrict to just the target GPU:**
+    ```nix
+    import <nixpkgs> {
+      config = {
+        allowUnfree = true;
+        cudaSupport = true;
+        cudaCapabilities = [ "8.9" ];  # sm_89 = RTX 4090 only
+        cudaForwardCompat = false;     # no PTX for future archs
+      };
+    }
+    ```
+    Common mappings: RTX 3090 = `"8.6"`, RTX 4090 = `"8.9"`, A100 = `"8.0"`, H100 = `"9.0"`.
+    Restricting to one arch cuts build time from ~13h to ~2h. Once built, derivations are cached in the local Nix store.
+
+11. **Pushing Nix Docker images to GHCR**: Use skopeo (not docker) since Nix images are tar archives:
+    ```bash
+    nix-shell -p skopeo --run "skopeo copy docker-archive:./result docker://ghcr.io/YOUR_ORG/IMAGE:TAG"
+    ```
+    Authenticate with `GH_TOKEN` environment variable via skopeo login or auth config.
+
+12. **Nix image layer count**: `buildLayeredImage` produces ~99-100 layers. Docker's max is 127 layers. Don't add too many separate packages to `contents` — group related tools or use `buildEnv` if approaching the limit.
+
+13. **fakeNss vs custom passwd**: Nix's `dockerTools.fakeNss` provides a read-only `/etc/passwd` with only root and nobody. If you need additional users (like sshd), create passwd/group manually in `extraCommands` instead of using fakeNss.
 
 ## Typical Workflow
 

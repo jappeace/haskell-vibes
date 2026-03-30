@@ -113,6 +113,23 @@ the cost of losing a 6-hour training run to a post-training crash.
 
 ## Quick Start (after goal clarification + trial)
 
+### Preferred: Nix Docker image (pure, reproducible)
+
+1. Build the Nix Docker image: `nix-build docker.nix` (in `/home/claude/vibes/scottish-tts/`)
+2. Push to GHCR: `skopeo copy docker-archive:./result docker://ghcr.io/jappeace-sloth/scottish-tts-training:nix-cuda`
+3. Prepare onstart script (see [onstart-nix-template.md](onstart-nix-template.md))
+4. **Run a trial** with max_epochs = base + 6
+5. Rent RTX 4090: `vastai create instance OFFER --image ghcr.io/jappeace-sloth/scottish-tts-training:nix-cuda --disk 100 --ssh`
+6. Monitor with `vastai logs INSTANCE_ID`
+7. Download ONNX model when done
+8. Destroy instance
+
+**Why Nix over pip?** Pip-based training failed 3 times (~16.5h wasted GPU time) due to
+missing/conflicting dependencies (onnx, torchmetrics, numpy). With Nix, all deps are
+verified at build time — if it builds, it works. No runtime `apt-get` or `pip install`.
+
+### Fallback: pip-based (onstart-template.md)
+
 1. Prepare a training script (see [onstart-template.md](onstart-template.md))
 2. **Run a trial** with max_epochs = base + 6 to validate the full pipeline
 3. Rent an RTX 4090 on Vast.ai using `--onstart-cmd` mode
@@ -212,7 +229,22 @@ real speaker from the same accent region over synthetic augmentation:
 3. **LJSpeech format** for Piper: `utterance_id|transcript_text` in metadata.csv
 4. **Resample to 22050 Hz mono** with sox before preprocessing
 
-## Critical Dependency Pins
+## Dependencies
+
+### With Nix image (preferred): No dependency management needed
+
+The Nix Docker image (`docker.nix`) bakes in ALL dependencies at build time:
+- torch (with CUDA), pytorch-lightning, torchmetrics, onnx, onnxruntime
+- librosa, piper-phonemize, soundfile, cython, huggingface-hub, numpy
+- espeak-ng, ffmpeg, sox, git, wget, unzip, openssh
+
+**No pip install, no apt-get, no version pinning, no patching.**
+If the image builds, everything works. This is the whole point of Nix.
+
+The Nix image uses whatever versions are in nixpkgs (currently PL 2.6.1, torch 2.10.0).
+Piper may need minor compatibility fixes for newer PL versions — test with a trial run.
+
+### With pip (fallback): Critical Dependency Pins
 
 These MUST be pinned or training will fail in subtle ways:
 
@@ -230,7 +262,7 @@ pip install piper-phonemize         # not auto-installed by piper
 **DO NOT pip install torch** — use the container's pre-installed PyTorch.
 Installing torch via pip can pull a version incompatible with the CUDA driver.
 
-## PyTorch Lightning 1.7.7 Patches
+### PyTorch Lightning 1.7.7 Patches (pip only, not needed with Nix)
 
 PL 1.7.7 needs three patches to work with modern PyTorch:
 
@@ -346,7 +378,8 @@ vastai search offers 'gpu_name=RTX_4090 gpu_ram>23 reliability>0.95 disk_space>1
 
 - RTX 4090: Best price/performance for Piper TTS
 - 100GB disk minimum (checkpoints + dataset + model)
-- Image: `pytorch/pytorch:2.1.0-cuda11.8-cudnn8-runtime` (known working)
+- Image: `ghcr.io/jappeace-sloth/scottish-tts-training:nix-cuda` (Nix, preferred)
+- Fallback image: `pytorch/pytorch:2.1.0-cuda11.8-cudnn8-runtime` (pip-based)
 
 ## Monitoring
 
@@ -362,7 +395,36 @@ DEBUG:fsspec.local:open file: .../epoch=NNNN-step=SSSSSS.ckpt
 
 Training complete marker: `MARKER: TRAINING_DONE`
 
+## Nix Docker Image
+
+The Nix image at `/home/claude/vibes/scottish-tts/docker.nix` provides a fully
+reproducible training environment. Key features:
+
+- **Pure Nix**: All deps (including CUDA torch) verified at build time
+- **No runtime installs**: No pip, no apt-get, no patching
+- **Vast.ai compatible**: SSH, sshd, host keys, passwd, all baked in
+- **Build time**: ~2h first build when targeting one GPU arch, instant after (Nix cache)
+- **IMPORTANT**: Set `cudaCapabilities = [ "8.9" ]` for RTX 4090 — default builds for ALL architectures (~13h)
+
+### Building and pushing:
+```bash
+cd /home/claude/vibes/scottish-tts
+nix-build docker.nix                    # produces ./result (tar.gz)
+nix-shell -p skopeo --run "skopeo copy docker-archive:./result docker://ghcr.io/jappeace-sloth/scottish-tts-training:nix-cuda"
+```
+
+### Nix onstart script differences from pip template:
+- No Phase 1 (system deps) — already in image
+- No Phase 2 (pip install) — already in image
+- No PL patching — nixpkgs PL version works with nixpkgs torch
+- Paths: use `/root/` not `/workspace/`, Python is on PATH from Nix
+
+See `onstart-nix.sh` in the scottish-tts repo for a working example.
+
 ## Files Reference
 
-- [onstart-template.md](onstart-template.md) — Full self-contained training script template
+- [onstart-template.md](onstart-template.md) — pip-based training script template
 - [openslr-datasets.md](openslr-datasets.md) — Available speech datasets and formats
+- `/home/claude/vibes/scottish-tts/docker.nix` — Nix Docker image definition
+- `/home/claude/vibes/scottish-tts/onstart-nix.sh` — Nix-compatible onstart script
+- `/home/claude/vibes/scottish-tts/preflight.sh` — Pre-deployment validation
