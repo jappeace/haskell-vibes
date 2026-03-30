@@ -27,9 +27,10 @@ fi
 
 # Select voice based on instance name
 case "$INSTANCE_NAME" in
-  stan) VOICE="joe" ;;
+  stan)  VOICE="joe" ;;
   cabal) VOICE="cabal" ;;
-  *)    VOICE="amy" ;;
+  morag) VOICE="morag" ;;
+  *)     VOICE="amy" ;;
 esac
 export PIPER_MODEL="${PIPER_VOICES}/${VOICE}/medium/en_US-${VOICE}-medium.onnx"
 

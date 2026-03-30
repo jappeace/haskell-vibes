@@ -51,9 +51,22 @@ let
     cp ${cabal-voice-src}/en_US-cabal-medium.onnx.json $out/en/en_US/cabal/medium/
   '';
 
+  morag-voice-src = pkgs.fetchFromGitHub {
+    owner = "jappeace-sloth";
+    repo = "scottish-tts";
+    rev = "75928690dfbea822be6d740a10a9a5c155c4f981";
+    hash = "sha256-tMyonoTIyqnSzoU9Z2av44dezwlyHzCeSaM68qn+yYc=";
+  };
+
+  piper-morag-voice = pkgs.runCommand "piper-morag-voice" {} ''
+    mkdir -p $out/en/en_US/morag/medium
+    cp ${morag-voice-src}/scottish-model.onnx $out/en/en_US/morag/medium/en_US-morag-medium.onnx
+    cp ${morag-voice-src}/scottish-model.onnx.json $out/en/en_US/morag/medium/en_US-morag-medium.onnx.json
+  '';
+
   piper-voices = pkgs.symlinkJoin {
     name = "piper-voices";
-    paths = [ piper-amy-voice piper-joe-voice piper-cabal-voice ];
+    paths = [ piper-amy-voice piper-joe-voice piper-cabal-voice piper-morag-voice ];
   };
 
   piper = pkgs.writeShellScriptBin "piper" ''
