@@ -39,6 +39,7 @@ docker run -it \
     -e PULSE_SERVER="unix:/run/user/1000/pulse/native" \
     -v "$(pwd)/../vibes":/home/claude/vibes \
     -v "$(pwd)/skills":/home/claude/.claude/skills \
+    -v "$(pwd)/character":/home/claude/character \
     -v "$(pwd)/hooks":/home/claude/.claude/hooks \
     --rm \
     claude-env:latest \
