@@ -1,10 +1,6 @@
 /tasks.md
-/instances/kyle/*
-/instances/kyle.json
+/instances/*
 /root/.cache/
 /root/.claude.json
 /root/.config/
 /root/.local/
-/instances/stan.json
-/instances/stan/
-/instances/*.json
