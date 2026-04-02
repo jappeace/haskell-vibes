@@ -86,7 +86,8 @@ let
       pkgs.git
       pkgs.curl
       pkgs.xz
-      pkgs.nix
+      pkgs.su-exec
+      pkgs.lix # better nix
       pkgs.w3m
       pkgs.cacert
       pkgs.gnugrep
@@ -130,8 +131,7 @@ pkgs.dockerTools.buildImage {
       "COLORTERM=truecolor"
       "NODE_OPTIONS=--dns-result-order=ipv4first"
       "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-      # IMPORTANT: Since you mount the socket, 'daemon' is correct here
-      "NIX_REMOTE=daemon"
+      # entrypoint.sh starts nix-daemon locally in the container
       "PATH=/bin:/nix/var/nix/profiles/default/bin"
 
       "NIX_PATH=nixpkgs=${pkgs.path}" # fixes import <nixpkgs> errors
