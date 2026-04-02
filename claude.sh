@@ -70,7 +70,6 @@ docker run -it \
     "${DOCKER_PLATFORM_ARGS[@]}" \
     --tmpfs /tmp:rw,exec,mode=1777 \
     --init \
-    --add-host host.docker.internal:host-gateway \
     --dns 8.8.8.8 \
     -e NODE_OPTIONS="--dns-result-order=ipv4first" \
     -e INSTANCE_NAME="$INSTANCE_NAME" \
