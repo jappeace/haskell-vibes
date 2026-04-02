@@ -73,21 +73,7 @@ let
     MODEL="''${PIPER_MODEL:-${piper-voices}/en/en_US/amy/medium/en_US-amy-medium.onnx}"
     ${pkgs.piper-tts}/bin/piper -m "$MODEL" "$@"
   '';
-in
-
-pkgs.dockerTools.buildImage {
-  name = "claude-env";
-  tag = "latest";
-  extraCommands = ''
-    # Create necessary directories
-    mkdir -p home/claude etc tmp
-
-    # Set permissions
-    chown -R 1000:100 home/claude
-    chmod 1777 tmp
-  '';
-
-  copyToRoot = pkgs.buildEnv {
+  env = pkgs.buildEnv {
     name = "image-root";
     paths = [
       systemPasswd
@@ -116,6 +102,24 @@ pkgs.dockerTools.buildImage {
     ];
     pathsToLink = [ "/" ];
   };
+in
+
+{
+  inherit env;
+  image =
+pkgs.dockerTools.buildImage {
+  name = "claude-env";
+  tag = "latest";
+  extraCommands = ''
+    # Create necessary directories
+    mkdir -p home/claude etc tmp
+
+    # Set permissions
+    chown -R 1000:100 home/claude
+    chmod 1777 tmp
+  '';
+
+  copyToRoot = env;
 
   config = {
     Entrypoint = [ "${pkgs.claude-code}/bin/claude" ];
@@ -135,4 +139,6 @@ pkgs.dockerTools.buildImage {
     ];
     WorkingDir = "/home/claude";
   };
+};
+
 }

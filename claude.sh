@@ -11,9 +11,11 @@ fi
 
 INSTANCE_NAME="$1"
 
+nix-build default.nix
+
 # 1. Build and load the Docker image via Nix
 # nix-build creates an executable script that streams the image tarball; we pipe it to docker load.
-docker load -i "$(nix-build default.nix)"
+docker load -i "$(nix-build default.nix -A image)"
 
 # 2. Run the container
 docker run -it \
