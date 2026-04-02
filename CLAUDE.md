@@ -40,8 +40,9 @@ It's good for cloning work in.
 # Workflow
 - If a task and the test suite don't align, ask for clarity
 - For a new task create a new branch to work from. 
-  First go to master, make sure it's up to date by pulling, then fork a branch from that.
+  First go to master, make sure it's up to date by pulling from upstream, then fork a branch from that.
   If a PR is still open we can work on the same branch.
+  If you don't know what upstream is ask!
 - Be sure to run `cabal build` when you're done making a series of code changes, this can be intermediately run as well to ensure things are consistent. Do not finish the task until the typechecker passes.
 - Repair all newly introduced warnings.
 - If we're implementing any new function or behaviour, add a test to assert it works.
