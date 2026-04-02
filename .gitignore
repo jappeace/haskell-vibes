@@ -7,3 +7,4 @@
 /root/.local/
 /instances/stan.json
 /instances/stan/
+/instances/*.json
