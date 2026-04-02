@@ -4,3 +4,6 @@
 /root/.claude.json
 /root/.config/
 /root/.local/
+/result
+/result-2
+/root/*
