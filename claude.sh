@@ -11,27 +11,79 @@ fi
 
 INSTANCE_NAME="$1"
 
-nix-build default.nix
+# make sure they got their little claude state and memories
+INSTANCE_DIR="$(pwd)/instances/$INSTANCE_NAME"
+INSTANCE_JSON="$(pwd)/instances/${INSTANCE_NAME}.json"
 
-# 1. Build and load the Docker image via Nix
-# nix-build creates an executable script that streams the image tarball; we pipe it to docker load.
-docker load -i "$(nix-build default.nix -A image)"
+if [ ! -d "$INSTANCE_DIR" ]; then
+    echo "Creating instance directory: $INSTANCE_DIR"
+    mkdir -p "$INSTANCE_DIR"
+fi
 
-# 2. Run the container
+if [ -e "$INSTANCE_JSON" ] && [ ! -f "$INSTANCE_JSON" ]; then
+    echo "Warning: $INSTANCE_JSON exists but is not a regular file. Deleting..."
+    rm -rf "$INSTANCE_JSON"
+fi
+
+if [ ! -f "$INSTANCE_JSON" ]; then
+    echo "Creating empty JSON config: $INSTANCE_JSON"
+    echo "{}" > "$INSTANCE_JSON"
+fi
+
+# we got to build it's jail.
+OS_NAME=$(uname -s)
+DOCKER_PLATFORM_ARGS=()
+
+if [ "$OS_NAME" != "Darwin" ]; then
+    # on linux we can do this normally
+    # build all things first, all paths are available on the host
+    nix-build ./default.nix
+    # 1A. Linux Native: Build and load normally
+    docker load -i "$(nix-build default.nix -A image)"
+
+else
+    # osx we've to build for linux, to do that we borrow dockers' running linux
+
+    # 1B. macOS: Build inside a Linux Nix container to bypass missing features
+    ARCH=$(uname -m)
+
+    if [ "$ARCH" == "arm64" ]; then
+        # Apple Silicon Mac
+        DOCKER_PLATFORM_ARGS=("--platform" "linux/arm64")
+        docker run --rm \
+            -v nix-builder-cache:/nix \
+            -v "$(pwd):/workspace" -w /workspace nixos/nix \
+            sh -c 'nix-build default.nix -A image > /dev/null && cat result' | docker load
+    else
+        # Intel Mac
+        DOCKER_PLATFORM_ARGS=("--platform" "linux/amd64")
+        docker run --platform linux/amd64 --rm \
+               -v nix-builder-cache:/nix \
+               -v "$(pwd):/workspace" -w /workspace nixos/nix \
+            sh -c 'nix-build default.nix -A image > /dev/null && cat result' | docker load
+    fi
+fi
+
+
+# Run the container
 docker run -it \
+    "${DOCKER_PLATFORM_ARGS[@]}" \
     --tmpfs /tmp:rw,exec,mode=1777 \
     --init \
     --dns 8.8.8.8 \
     -e NODE_OPTIONS="--dns-result-order=ipv4first" \
-    -e INSTANCE_NAME=$INSTANCE_NAME \
+    -e INSTANCE_NAME="$INSTANCE_NAME" \
     -e TERM=xterm-256color \
     -e COLORTERM=truecolor \
     -e GH_TOKEN="$(cat ~/.gh_token)" \
     -e HOME="/home/claude" \
-    -e NIX_REMOTE=daemon \
-    --user "$(id -u):$(id -g)" \
-    -v /nix/var/nix/daemon-socket/socket:/nix/var/nix/daemon-socket/socket \
-    -v /nix/store:/nix/store:ro \
+    -e CLAUDE_UID="$(id -u)" \
+    -e CLAUDE_GID="$(id -g)" \
+    --ulimit nofile=1048576:1048576 \
+    --ulimit nproc=65535:65535 \
+    -v "$(pwd)/entrypoint.sh:/entrypoint.sh:ro" \
+    --entrypoint /entrypoint.sh \
+    -v "$(pwd)/nix.conf:/etc/nix/nix.conf:ro" \
     -v "$HOME/.ssh/sloth:/home/claude/.ssh/id_ed25519" \
     -v "$(pwd)/instances/${INSTANCE_NAME}.json":/home/claude/.claude.json \
     -v "$(pwd)/instances/${INSTANCE_NAME}":/home/claude/.claude \

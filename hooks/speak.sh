@@ -35,21 +35,22 @@ esac
 export PIPER_MODEL="${PIPER_VOICES}/${VOICE}/medium/en_US-${VOICE}-medium.onnx"
 
 # Kill any previous speech before starting new one
-pkill vlc 2>/dev/null
+pkill -f "play -t wav" 2>/dev/null
 
-# Speak via piper + cvlc (CABAL voice gets SoX DSP post-processing)
+# Speak via piper + sox play (CABAL voice gets SoX DSP post-processing)
 if [ "$VOICE" = "cabal" ]; then
   echo "$SUMMARY" | piper -f - \
-    | sox -t wav - -t wav - \
+    | play -t wav - \
         phaser 0.7 0.7 3 0.5 0.5 -t \
         flanger 1 2 0 71 0.5 sine 25 linear \
         equalizer 200 1.0q +4 \
         equalizer 6000 1.0q -3 \
         reverb 15 50 70 \
         norm -1 \
-    | cvlc --play-and-exit --aout pulse --gain 0.05 - 2>/dev/null
+        vol 0.05 \
+        2>/dev/null
 else
-  echo "$SUMMARY" | piper -f - | cvlc --play-and-exit --aout pulse --gain 0.05 - 2>/dev/null
+  echo "$SUMMARY" | piper -f - | play -t wav - vol 0.05 2>/dev/null
 fi
 
 exit 0

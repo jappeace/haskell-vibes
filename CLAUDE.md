@@ -25,6 +25,8 @@ It's good for cloning work in.
 - Avoid using wildcards on pattern matching if possible, always write out all cases.
 - Always add type signatures to top level bindings, try make types as restrictive as possible.
 - If functions cause you confusion add documentation at the deceleration to clear up confusion.
+- Avoid generic names, use more specific names where possible. Keep them succinct.
+- Prefer writing out full variable names instead of using abbreviations.
 
 # Testing
 - A test should be less complex then the implementation.

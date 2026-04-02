@@ -1,0 +1,38 @@
+#!/bin/sh
+set -xe
+
+rm -f /nix/var/nix/daemon-socket/socket
+
+mkdir -p /var/log/nix/
+
+(
+    export CURL_CA_BUNDLE="/etc/ssl/certs/ca-bundle.crt"
+    export PATH="/nix/var/nix/profiles/default/bin:/bin:/usr/bin"
+    export HOME="/root"
+
+    echo "Starting Nix daemon in the background..."
+    # 1. The Double-Fork Trick: (command &)
+    # This orphans the daemon so Docker's init system (PID 1) adopts it and cleans up zombies.
+    nix-daemon --daemon >/var/log/nix-daemon.log 2>&1 &
+)
+
+# Wait for the daemon to actually create the socket
+while [ ! -S /nix/var/nix/daemon-socket/socket ]; do
+  sleep 0.1
+done
+
+# Open the socket so the unprivileged Claude user can talk to it
+chmod 666 /nix/var/nix/daemon-socket/socket
+
+# it keeps getting annoyed by this
+chown ${CLAUDE_UID}:${CLAUDE_GID} /home/claude
+
+if ! grep -q "x:${CLAUDE_UID}:" /etc/passwd; then
+    echo "claude:x:${CLAUDE_UID}:${CLAUDE_GID}:Claude User:/home/claude:/bin/sh" >> /etc/passwd
+fi
+
+echo "Nix daemon is live. Dropping privileges..."
+
+# Execute the main command as the host user mapping
+# NOTE: This requires 'su-exec' or 'gosu' to be installed in your Nix image.
+exec su-exec ${CLAUDE_UID}:${CLAUDE_GID} "$@"
