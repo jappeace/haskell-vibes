@@ -278,3 +278,10 @@ nix-instantiate --eval -E '(import ./nix/pin.nix).lib.version'
 - **macOS-only derivations on Linux**: `nix-instantiate` will fail for iOS/simulator
   derivations on Linux. This is expected. `ci.nix` uses the `isDarwin` guard to
   skip these automatically.
+
+- **Flaky Windows `ghc-pkg` permission errors**: On GitHub Actions Windows runners,
+  `ghc-pkg` can fail with `you don't have permission to modify this file` on the
+  package cache during the install step — even though compilation succeeded. This is
+  a transient file-locking issue, not a real build failure. Check the actual error
+  before assuming a dependency is broken. A single Windows job failing while all other
+  platforms pass is a strong signal of flakiness.
