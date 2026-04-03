@@ -1,4 +1,4 @@
-{ uid, gid }:
+{ uid, gid, voiceName ? "amy" }:
 let
   sources = import ./npins/default.nix;
   pkgs = import sources.nixpkgs { config.allowUnfree = true; };
@@ -34,6 +34,7 @@ let
     nixbld:x:30000:claude
   '';
 
+  # Voice model definitions
   piper-amy-voice = pkgs.fetchgit {
     url = "https://huggingface.co/rhasspy/piper-voices";
     rev = "834f23262168a7e809179465e4113f23f5a7d1f7";
@@ -82,13 +83,19 @@ let
     cp ${morag-voice-src}/scottish-model.onnx.json $out/en/en_US/morag/medium/en_US-morag-medium.onnx.json
   '';
 
-  piper-voices = pkgs.symlinkJoin {
-    name = "piper-voices";
-    paths = [ piper-amy-voice piper-joe-voice piper-cabal-voice piper-morag-voice ];
+  # Map voice name to its derivation, defaulting to amy for unknown names
+  voiceDerivations = {
+    amy = piper-amy-voice;
+    joe = piper-joe-voice;
+    cabal = piper-cabal-voice;
+    morag = piper-morag-voice;
   };
 
+  selectedVoice = voiceDerivations.${voiceName} or piper-amy-voice;
+  resolvedVoiceName = if builtins.hasAttr voiceName voiceDerivations then voiceName else "amy";
+
   piper = pkgs.writeShellScriptBin "piper" ''
-    MODEL="''${PIPER_MODEL:-${piper-voices}/en/en_US/amy/medium/en_US-amy-medium.onnx}"
+    MODEL="''${PIPER_MODEL:-${selectedVoice}/en/en_US/${resolvedVoiceName}/medium/en_US-${resolvedVoiceName}-medium.onnx}"
     ${pkgs.piper-tts}/bin/piper -m "$MODEL" "$@"
   '';
   env = pkgs.buildEnv {
@@ -153,7 +160,7 @@ pkgs.dockerTools.buildImage {
       "PATH=/bin:/nix/var/nix/profiles/default/bin"
 
       "NIX_PATH=nixpkgs=${pkgs.path}" # fixes import <nixpkgs> errors
-      "PIPER_VOICES=${piper-voices}/en/en_US"
+      "PIPER_VOICES=${selectedVoice}/en/en_US"
     ];
     WorkingDir = "/home/claude";
   };

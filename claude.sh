@@ -30,10 +30,18 @@ if [ ! -f "$INSTANCE_JSON" ]; then
     echo "{}" > "$INSTANCE_JSON"
 fi
 
+# Map instance name to voice model name
+case "$INSTANCE_NAME" in
+  stan)  VOICE_NAME="joe" ;;
+  cabal) VOICE_NAME="cabal" ;;
+  morag) VOICE_NAME="morag" ;;
+  *)     VOICE_NAME="amy" ;;
+esac
+
 # we got to build it's jail.
 OS_NAME=$(uname -s)
 DOCKER_PLATFORM_ARGS=()
-NIX_ARGS="./default.nix --arg uid $(id -u) --arg gid $(id -g)"
+NIX_ARGS="./default.nix --arg uid $(id -u) --arg gid $(id -g) --argstr voiceName $VOICE_NAME"
 
 if [ "$OS_NAME" != "Darwin" ]; then
     # on linux we can do this normally
