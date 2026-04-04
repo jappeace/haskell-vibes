@@ -74,9 +74,6 @@ else
 fi
 
 
-# Clean stale tmp volume from previous runs
-docker volume rm "${INSTANCE_NAME}-tmp" 2>/dev/null || true
-
 # Run the container
 docker run -it \
     "${DOCKER_PLATFORM_ARGS[@]}" \
