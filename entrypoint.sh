@@ -33,8 +33,11 @@ done
 # Open the socket so the unprivileged Claude user can talk to it
 chmod 666 /nix/var/nix/daemon-socket/socket
 
-# it keeps getting annoyed by this
+# Nix store makes all paths 0555 (read-only). dockerTools.buildImage preserves
+# those permissions in the Docker layer, so build-time chmod is ineffective.
+# Fix permissions at runtime where we actually have a writable filesystem.
 chown ${CLAUDE_UID}:${CLAUDE_GID} /home/claude
+chmod 755 /home/claude
 
 if ! grep -q "x:${CLAUDE_UID}:" /etc/passwd; then
     echo "claude:x:${CLAUDE_UID}:${CLAUDE_GID}:Claude User:/home/claude:/bin/sh" >> /etc/passwd

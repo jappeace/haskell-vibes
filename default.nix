@@ -140,9 +140,9 @@ let
       email = sloth@jappie.me
     GITCONFIG
 
-    # Set permissions
+    # Set ownership (chmod is done at runtime in entrypoint.sh because
+    # the Nix store resets all paths to 0555 after the build)
     chown -R ${toString uid}:${toString gid} $out/home/claude
-    chmod 755 $out/home/claude
     chmod 1777 $out/tmp
   '')
     ];
