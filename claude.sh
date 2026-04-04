@@ -45,13 +45,15 @@ NIX_ARGS="./default.nix --arg uid $(id -u) --arg gid $(id -g) --argstr voiceName
 
 if [ "$OS_NAME" != "Darwin" ]; then
     # on linux we can do this normally
-    # streamLayeredImage produces a script that streams the image to stdout
-    $(nix-build $NIX_ARGS -A image) | docker load
+    # build all things first, all paths are available on the host
+    nix-build $NIX_ARGS
+    # 1A. Linux Native: Build and load normally
+    docker load -i "$(nix-build $NIX_ARGS -A image)"
 
 else
     # osx we've to build for linux, to do that we borrow dockers' running linux
 
-    # macOS: Build inside a Linux Nix container to bypass missing features
+    # 1B. macOS: Build inside a Linux Nix container to bypass missing features
     ARCH=$(uname -m)
 
     if [ "$ARCH" == "arm64" ]; then
@@ -60,14 +62,14 @@ else
         docker run --rm \
             -v nix-builder-cache:/nix \
             -v "$(pwd):/workspace" -w /workspace nixos/nix \
-            sh -c 'nix-build '"$NIX_ARGS"' -A image > /dev/null && $(cat result)' | docker load
+            sh -c 'nix-build $NIX_ARGS -A image > /dev/null && cat result' | docker load
     else
         # Intel Mac
         DOCKER_PLATFORM_ARGS=("--platform" "linux/amd64")
         docker run --platform linux/amd64 --rm \
                -v nix-builder-cache:/nix \
                -v "$(pwd):/workspace" -w /workspace nixos/nix \
-            sh -c 'nix-build '"$NIX_ARGS"' -A image > /dev/null && $(cat result)' | docker load
+            sh -c 'nix-build $NIX_ARGS -A image > /dev/null && cat result' | docker load
     fi
 fi
 

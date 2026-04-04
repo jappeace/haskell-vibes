@@ -117,12 +117,9 @@ in
 {
   inherit env;
   image =
-pkgs.dockerTools.streamLayeredImage {
+pkgs.dockerTools.buildImage {
   name = "claude-env";
   tag = "latest";
-
-  contents = [ env ];
-
   extraCommands = ''
     # Create necessary directories (added var/empty for nixbld users)
     mkdir -p home/claude etc/nix tmp var/empty
@@ -156,6 +153,8 @@ pkgs.dockerTools.streamLayeredImage {
     chown -R ${toString uid}:${toString gid} home/claude
     chmod 1777 tmp
   '';
+
+  copyToRoot = env;
 
   config = {
     Entrypoint = [ "${entrypoint}" ];
