@@ -2,18 +2,8 @@
 let
   sources = import ./npins/default.nix;
   pkgs = import sources.nixpkgs { config.allowUnfree = true; };
-  systemGitConfig = pkgs.writeTextDir "etc/gitconfig" ''
-    [user]
-      name = jappeace-sloth
-      email = sloth@jappie.me
-  '';
-  systemNsswitch = pkgs.writeTextDir "etc/nsswitch.conf" ''
-    passwd:    files
-    group:     files
-    shadow:    files
-  '';
-
-  systemPasswd = pkgs.writeTextDir "etc/passwd" ''
+  # passwd needs Nix interpolation for bashInteractive path, so use writeText
+  systemPasswd = pkgs.writeText "passwd" ''
     root:x:0:0:System Tech Leadership:/root:/bin/sh
     claude:x:${toString uid}:${toString gid}:Claude:/home/claude:${pkgs.bashInteractive}/bin/bash
     nixbld1:x:30001:30000:Nix build user 1:/var/empty:/sbin/nologin
@@ -26,12 +16,6 @@ let
     nixbld8:x:30008:30000:Nix build user 8:/var/empty:/sbin/nologin
     nixbld9:x:30009:30000:Nix build user 9:/var/empty:/sbin/nologin
     nixbld10:x:30010:30000:Nix build user 10:/var/empty:/sbin/nologin
-  '';
-
-  systemGroup = pkgs.writeTextDir "etc/group" ''
-    root:x:0:
-    claude:x:100:
-    nixbld:x:30000:claude
   '';
 
   # Voice model definitions
@@ -99,20 +83,11 @@ let
     ${pkgs.piper-tts}/bin/piper -m "$MODEL" "$@"
   '';
 
-  # Baked-in config files (avoids runtime mounts for static content)
-  nixConf = pkgs.writeTextDir "etc/nix/nix.conf" (builtins.readFile ./nix.conf);
-  builderSshConfig = pkgs.writeTextDir "etc/nix/builder-ssh-config" (builtins.readFile ./builder-ssh-config);
   entrypoint = pkgs.writeScript "entrypoint" (builtins.readFile ./entrypoint.sh);
 
   env = pkgs.buildEnv {
     name = "image-root";
     paths = [
-      systemNsswitch
-      systemPasswd
-      systemGroup
-      systemGitConfig
-      nixConf
-      builderSshConfig
       pkgs.bashInteractive
       pkgs.coreutils
       pkgs.gh
@@ -150,7 +125,32 @@ pkgs.dockerTools.streamLayeredImage {
 
   extraCommands = ''
     # Create necessary directories (added var/empty for nixbld users)
-    mkdir -p home/claude etc tmp var/empty
+    mkdir -p home/claude etc/nix tmp var/empty
+
+    # Write config files directly into the image filesystem rather than
+    # as symlinks to nix store paths. Store symlinks created by writeTextDir
+    # break when nix GC runs inside the container.
+    cp ${./nix.conf} etc/nix/nix.conf
+    cp ${./builder-ssh-config} etc/nix/builder-ssh-config
+    cp ${systemPasswd} etc/passwd
+
+    cat > etc/nsswitch.conf << 'NSSWITCH'
+    passwd:    files
+    group:     files
+    shadow:    files
+    NSSWITCH
+
+    cat > etc/group << 'GROUP'
+    root:x:0:
+    claude:x:100:
+    nixbld:x:30000:claude
+    GROUP
+
+    cat > etc/gitconfig << 'GITCONFIG'
+    [user]
+      name = jappeace-sloth
+      email = sloth@jappie.me
+    GITCONFIG
 
     # Set permissions
     chown -R ${toString uid}:${toString gid} home/claude
