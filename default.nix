@@ -142,6 +142,7 @@ let
 
     # Set permissions
     chown -R ${toString uid}:${toString gid} $out/home/claude
+    chmod 755 $out/home/claude
     chmod 1777 $out/tmp
   '')
     ];
