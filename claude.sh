@@ -81,6 +81,7 @@ docker run -it \
     -v "${INSTANCE_NAME}-tmp:/tmp" \
     --init \
     --dns 8.8.8.8 \
+    --add-host=host.docker.internal:host-gateway \
     -e NODE_OPTIONS="--dns-result-order=ipv4first" \
     -e INSTANCE_NAME="$INSTANCE_NAME" \
     -e TERM=xterm-256color \
@@ -95,6 +96,8 @@ docker run -it \
     --entrypoint /entrypoint.sh \
     -v "$(pwd)/nix.conf:/etc/nix/nix.conf:ro" \
     -v "$HOME/.ssh/sloth:/home/claude/.ssh/id_ed25519" \
+    -v "$HOME/.ssh/sloth:/tmp/builder_key:ro" \
+    -v "$(pwd)/builder-ssh-config:/tmp/builder-ssh-config:ro" \
     -v "$(pwd)/instances/${INSTANCE_NAME}.json":/home/claude/.claude.json \
     -v "$(pwd)/instances/${INSTANCE_NAME}":/home/claude/.claude \
     -v "$(pwd)/settings.json":/home/claude/.claude/settings.json \

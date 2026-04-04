@@ -125,6 +125,7 @@ let
       pkgs.sox
       pkgs.util-linux
       pkgs.jq
+      pkgs.openssh
     ];
     pathsToLink = [ "/" ];
   };

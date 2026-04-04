@@ -5,6 +5,13 @@ rm -f /nix/var/nix/daemon-socket/socket
 
 mkdir -p /var/log/nix/
 
+# Set up root SSH for nix remote builds to host
+mkdir -p /root/.ssh
+cp /tmp/builder_key /root/.ssh/builder_key
+chmod 600 /root/.ssh/builder_key
+cp /tmp/builder-ssh-config /root/.ssh/config
+chmod 600 /root/.ssh/config
+
 (
     export CURL_CA_BUNDLE="/etc/ssl/certs/ca-bundle.crt"
     export PATH="/nix/var/nix/profiles/default/bin:/bin:/usr/bin"
