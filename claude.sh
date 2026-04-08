@@ -11,6 +11,8 @@ fi
 
 INSTANCE_NAME="$1"
 
+mkdir -p ../vibes/$INSTANCE_NAME
+
 # make sure they got their little claude state and memories
 INSTANCE_DIR="$(pwd)/instances/$INSTANCE_NAME"
 INSTANCE_JSON="$(pwd)/instances/${INSTANCE_NAME}.json"
