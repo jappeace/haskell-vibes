@@ -225,6 +225,112 @@ src = ./my-file;    # copies file to store
   is fine, but `with pkgs;` at file top level makes it hard to tell where
   names come from.
 
+## Haskell Package Overrides
+
+### haskellPackages.override pattern
+The standard way to customize Haskell packages in nix (from haskell-template-project):
+```nix
+pkgs.haskellPackages.override {
+  overrides = hnew: hold: {
+    my-project = hnew.callCabal2nix "my-project" ../. { };
+    # Jailbreak a package (remove all version bounds from .cabal):
+    some-pkg = pkgs.haskell.lib.doJailbreak hold.some-pkg;
+    # Disable tests:
+    other-pkg = pkgs.haskell.lib.dontCheck hold.other-pkg;
+  };
+}
+```
+
+### doJailBreak: what it does and doesn't do
+- `doJailBreak` adds `jailbreak = true` to the derivation, which runs
+  `jailbreak-cabal` to strip version bounds from the `.cabal` file
+- It does **NOT** modify `drv.src` — the source tarball is unchanged
+- This means `doJailBreak` only works for packages built through the
+  haskellPackages infrastructure (nix derivations)
+- For standalone `cabal build` invocations (e.g. cross-compilation pipelines),
+  use `--allow-newer` as the cabal-level equivalent
+
+### Common haskell.lib functions
+```nix
+with pkgs.haskell.lib; {
+  # Remove version bounds (equivalent to cabal --allow-newer for this pkg)
+  foo = doJailbreak old.foo;
+  # Skip test suite
+  bar = dontCheck old.bar;
+  # Skip haddock
+  baz = dontHaddock old.baz;
+  # Add extra deps
+  qux = addBuildDepends old.qux [ old.extra-dep ];
+  # Override cabal attrs directly
+  quux = overrideCabal old.quux (drv: {
+    configureFlags = drv.configureFlags or [] ++ [ "--flag=foo" ];
+  });
+}
+```
+
+## Cross-Compilation for Android
+
+### Toolchain setup
+```nix
+# Get cross-compiled package set for Android
+androidPkgs = pkgs.pkgsCross.aarch64-android-prebuilt;  # or armv7a-android-prebuilt
+ghc = androidPkgs.haskellPackages.ghc;
+
+# armv7a needs profiling disabled (LLVM crashes on profiled libs)
+ghc-armv7a = androidPkgs.haskellPackages.ghc.override { enableProfiledLibs = false; };
+
+# Cross-GHC binaries use a target prefix
+ghcCmd = "${ghc}/bin/${ghc.targetPrefix}ghc";          # e.g. aarch64-unknown-linux-android-ghc
+ghcPkgCmd = "${ghc}/bin/${ghc.targetPrefix}ghc-pkg";
+```
+
+### Android SDK/NDK in nix
+```nix
+pkgs = import nixpkgsSrc {
+  config.allowUnfree = true;                    # required for Android SDK
+  config.android_sdk.accept_license = true;     # required for Android SDK
+};
+```
+
+### Static linking for Android
+Android can't find GHC's separate shared libraries at runtime.
+Use `--whole-archive` to statically link boot libraries into the `.so`:
+```bash
+ghc -shared -o libapp.so Main.hs \
+  -optl-Wl,--whole-archive \
+  -optl$RTS_LIB -optl$BASE_LIB ...  \
+  -optl-Wl,--no-whole-archive
+```
+
+### Cross-compiling Hackage packages
+When cross-compiling third-party packages for Android via `cabal build`:
+- Hackage tarballs often have tight upper bounds on boot packages
+  (base, deepseq, ghc-prim, bytestring) that are too strict for newer GHC
+- `doJailBreak` doesn't help — it only affects nix derivation builds,
+  not standalone cabal invocations
+- Use `--allow-newer=base,deepseq,ghc-prim,bytestring,...` targeted to
+  boot packages only (safe because versions are fixed by GHC)
+- **Never** use `--allow-newer=all` — too broad, could mask real conflicts
+
+### overrideAttrs for fixing build phases
+```nix
+# Fix shell issues in install phases (common with pipefail)
+derivation.overrideAttrs (old: {
+  installPhase = builtins.replaceStrings
+    [ "find $out | head -20" ]        # SIGPIPE under pipefail
+    [ "find $out | head -20 || true" ] # suppress SIGPIPE
+    old.installPhase;
+});
+```
+
+### GHC package database (.conf) files
+When cross-compiling, package configs may need fixing:
+- **id/key fields**: Package's own identifier (preserve these)
+- **depends field**: Lists dependency unit IDs (may need cleaning)
+- After modifying `.conf` files, always run `ghc-pkg --package-db=DIR recache`
+- Cabal sub-libraries (e.g. `attoparsec:attoparsec-internal`) produce
+  separate `.a` files under `l/SUBLIB/build/` — often missed by install scripts
+
 ## Docker / Container Quirks
 
 - `/usr/bin/env` may not exist in Nix-based containers. Use `#!/bin/bash`
