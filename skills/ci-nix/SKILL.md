@@ -162,6 +162,11 @@ jobs:
       with:
         extra_nix_config: |
           experimental-features = nix-command flakes
+    - name: Nix store cache
+      uses: nix-community/cache-nix-action@v6
+      with:
+        primary-key: nix-${{ hashFiles('npins/sources.json', 'nix/*.nix', '*.cabal') }}
+        restore-prefixes-first-match: nix-
     - run: nix-build nix/ci.nix -A projects
 
   hetzner:
@@ -172,6 +177,11 @@ jobs:
       with:
         extra_nix_config: |
           experimental-features = nix-command flakes
+    - name: Nix store cache
+      uses: nix-community/cache-nix-action@v6
+      with:
+        primary-key: nix-${{ hashFiles('npins/sources.json', 'nix/*.nix', '*.cabal') }}
+        restore-prefixes-first-match: nix-
     - name: Unlock git-crypt
       if: "${{ env.GIT_CRYPT_KEY != '' }}"
       run: |
@@ -194,7 +204,11 @@ npins pins are self-contained — `nix_path` is only needed when nix files use `
     steps:
     - uses: actions/checkout@v4
     - uses: cachix/install-nix-action@v31
-    - uses: cachix/cachix-action@v15
+    - name: Nix store cache
+      uses: nix-community/cache-nix-action@v6
+      with:
+        primary-key: nix-ios-${{ hashFiles('npins/sources.json', 'nix/*.nix', '*.cabal') }}
+        restore-prefixes-first-match: nix-ios-
     - run: nix-build nix/ios.nix
     - run: nix-build nix/simulator.nix -o result-simulator
     - run: ./result-simulator/bin/test-lifecycle-ios
@@ -218,8 +232,13 @@ npins pins are self-contained — `nix_path` is only needed when nix files use `
        GH_TOKEN: ${{ github.token }}
    ```
 
-4. **Use cachix** for nix store caching across CI runs. The `actions/cache`
-   on `/nix/store` is a fallback.
+4. **Use `nix-community/cache-nix-action@v6`** for nix store caching in GitHub Actions.
+   It handles daemon-owned `/nix/store` permissions via sudo and SQLite database merging.
+   **Never use `actions/cache` on `/nix/store`** — it cannot write to the daemon-owned
+   store (Linux) or read-only APFS volume (macOS SIP), producing thousands of silent
+   tar permission errors. Place cache-nix-action AFTER `cachix/install-nix-action`
+   so `/nix` exists. Use content-addressed keys:
+   `primary-key: nix-${{ hashFiles('npins/sources.json', 'nix/*.nix', '*.cabal') }}`
 
 5. **Upload artifacts on master only** to save storage:
    ```yaml
