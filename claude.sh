@@ -78,6 +78,8 @@ fi
 
 # Run the container
 docker run -it \
+    --name "$INSTANCE_NAME" \
+    --hostname "$INSTANCE_NAME" \
     "${DOCKER_PLATFORM_ARGS[@]}" \
     --tmpfs /tmp:rw,exec,mode=1777 \
     --init \
