@@ -76,6 +76,12 @@ else
 fi
 
 
+# Mount /dev/kvm only when available (VirtualBox claims it exclusively)
+KVM_ARGS=()
+if [ -e /dev/kvm ] && [ -w /dev/kvm ]; then
+    KVM_ARGS=("--device" "/dev/kvm")
+fi
+
 # Run the container
 docker run -it \
     --name "$INSTANCE_NAME" \
@@ -83,7 +89,7 @@ docker run -it \
     "${DOCKER_PLATFORM_ARGS[@]}" \
     --tmpfs /tmp:rw,exec,mode=1777 \
     --init \
-    --device /dev/kvm \
+    "${KVM_ARGS[@]}" \
     --dns 8.8.8.8 \
     --add-host=host.docker.internal:host-gateway \
     -e NODE_OPTIONS="--dns-result-order=ipv4first" \
