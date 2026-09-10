@@ -1,5 +1,9 @@
 -- | The Stop hook: the end-of-turn gate.
 --
+-- Before any phase, the working-hours check ("Claude.Gate.WorkingHours")
+-- injects one warning per turn when the Stop fires outside CLAUDE.md's
+-- rest windows; a plain clock check, no model involved.
+--
 -- Three phases run in order over the per-turn state, mirroring the shell gate:
 --
 --   Phase 0 (dumbify). A cheap canary checks the changed code is understandable,
@@ -26,6 +30,7 @@ import Claude.Gate.Critique (runCritique)
 import Claude.Gate.Dumbify (runDumbify)
 import Claude.Gate.HookProtocol (HookEvent (sessionId, transcriptPath), emitSystemMessage, readHookEvent)
 import Claude.Gate.RuleReview (runRuleReview)
+import Claude.Gate.WorkingHours (runWorkingHours)
 import Claude.Gate.TurnState
   ( TurnPaths (critiqueApproved, dumbifyApproved, reviewApproved)
   , ensureStateDir
@@ -39,6 +44,7 @@ runStopGate = do
   event <- readHookEvent
   paths <- turnPaths (sessionId event)
   ensureStateDir paths
+  runWorkingHours paths
   runDumbify (sessionId event) paths
   runCritique (sessionId event) (transcriptPath event) paths
   runRuleReview (sessionId event) paths

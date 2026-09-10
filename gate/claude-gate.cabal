@@ -81,6 +81,7 @@ library
       Claude.Gate.HookProtocol
       Claude.Gate.Edit
       Claude.Gate.TurnState
+      Claude.Gate.WorkingHours
       Claude.Gate.RecordEdit
       Claude.Gate.DiffRender
       Claude.Gate.Corpus
@@ -110,7 +111,8 @@ library
       directory           < 1.4,
       filepath            < 1.6,
       typed-process       < 0.3,
-      safe-exceptions     < 0.2
+      safe-exceptions     < 0.2,
+      time                < 1.15
 
 executable claude-gate
   import: common-options
@@ -139,4 +141,5 @@ test-suite unit
       bytestring     < 0.13,
       text           < 2.2,
       directory      < 1.4,
-      filepath       < 1.6
+      filepath       < 1.6,
+      time           < 1.15
