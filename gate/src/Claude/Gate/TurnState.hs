@@ -59,6 +59,10 @@ data TurnPaths = TurnPaths
   , critiqueBroke :: FilePath
   , reviewApproved :: FilePath
   , reviewBroke :: FilePath
+  , hoursWarned :: FilePath
+    -- ^ Once-per-turn guard for the working-hours warning
+    -- ("Claude.Gate.WorkingHours"): present after the warning was
+    -- injected this turn, wiped with the rest on the next prompt.
   }
 
 -- | Resolve the state paths for a session id, reading TMPDIR the same way the
@@ -85,6 +89,7 @@ turnPaths session = do
       , critiqueBroke = dir </> "critique-broke"
       , reviewApproved = dir </> "review-approved"
       , reviewBroke = dir </> "review-broke"
+      , hoursWarned = dir </> "hours-warned"
       }
 
 -- | Make the session id safe to use as a single path component by replacing any

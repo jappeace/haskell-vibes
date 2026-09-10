@@ -21,6 +21,13 @@ The binary reads one hook JSON object on stdin and dispatches on its argument.
 
 ## Phases of the Stop gate
 
+- **Working-hours check (before everything).** A plain clock check, no
+  model: when the Stop fires outside CLAUDE.md's rest windows (22:45-07:00
+  NL, or Sunday) the gate injects one warning per turn ("warning outside
+  working hours, see claude.md") and the worker decides what to do with
+  it. The Amsterdam clock is computed from the EU DST rule in code because
+  the containers ship no zoneinfo and a named TZ silently falls back to
+  UTC. Disable with `CLAUDE_SKIP_HOURS_CHECK=1`.
 - **Phase A (rule review).** Claim the turn's review stack and review every diff
   in one reviewer call against the rules corpus (global and project `CLAUDE.md`
   plus the skills matching the touched file types). Violations block the Stop

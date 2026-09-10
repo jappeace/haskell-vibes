@@ -5,6 +5,7 @@ import Data.Aeson (Result (Success), Value, eitherDecode, eitherDecodeStrict, en
 import Data.ByteString.Lazy qualified as LazyByteString
 import Data.ByteString.Char8 qualified as ByteString
 import Data.List (isInfixOf)
+import Data.Maybe (isJust)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Claude.Gate.Corpus (selectSkills)
@@ -26,6 +27,8 @@ import Claude.Gate.ReviewPrompt (hasViolations)
 import Claude.Gate.SpawnAnnotation (annotateSpawn)
 import Claude.Gate.Transcript (turnAssistantText)
 import Claude.Gate.TurnState (readCounter, writeCounter)
+import Claude.Gate.WorkingHours (amsterdamTimeZone, workingHoursWarning)
+import Data.Time (TimeOfDay (TimeOfDay), UTCTime (UTCTime), fromGregorian, timeOfDayToTime, timeZoneMinutes)
 import Hedgehog (Gen, Property, forAll, property, (===))
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
@@ -56,7 +59,48 @@ tests =
     , dossierTests
     , counterTests
     , spawnAnnotationTests
+    , workingHoursTests
     ]
+
+-- | The rest rules over the coded Amsterdam clock. The first case is the
+-- incident that motivated the phase: on 9 sep 2026 at 20:55 UTC the
+-- worker believed it was 20:53 NL while it was 22:55 CEST, past bedtime.
+workingHoursTests :: TestTree
+workingHoursTests =
+  testGroup
+    "working-hours warning"
+    [ testCase "9 sep 2026 20:55 UTC (22:55 CEST) triggers the night warning" $ do
+        case workingHoursWarning (utcMoment 2026 9 9 20 55) of
+          Nothing -> assertFailure "expected a warning past bedtime"
+          Just warning -> do
+            assertBool "carries the claude.md pointer" ("warning outside working hours, see claude.md" `Text.isPrefixOf` warning)
+            assertBool "shows the real NL clock" ("22:55 CEST" `Text.isInfixOf` warning)
+    , testCase "a working-hours moment stays quiet (10 sep 2026 09:26 UTC = 11:26 CEST)" $
+        workingHoursWarning (utcMoment 2026 9 10 9 26) @?= Nothing
+    , testCase "22:44 NL is still inside working hours, 22:45 is not" $ do
+        workingHoursWarning (utcMoment 2026 9 10 20 44) @?= Nothing
+        assertBool "22:45 warns" (isJust (workingHoursWarning (utcMoment 2026 9 10 20 45)))
+    , testCase "before 07:00 NL warns, from 07:00 it does not" $ do
+        assertBool "06:59 warns" (isJust (workingHoursWarning (utcMoment 2026 9 10 4 59)))
+        workingHoursWarning (utcMoment 2026 9 10 5 0) @?= Nothing
+    , testCase "Sunday warns all day and names the Sunday rule" $ do
+        case workingHoursWarning (utcMoment 2026 9 13 10 0) of
+          Nothing -> assertFailure "expected the Sunday warning"
+          Just warning -> assertBool "names the Sunday rule" ("Sunday rule" `Text.isInfixOf` warning)
+    , testCase "winter runs on CET: 1 dec 2026 21:50 UTC is 22:50 NL and warns" $ do
+        assertBool "22:50 CET warns" (isJust (workingHoursWarning (utcMoment 2026 12 1 21 50)))
+        workingHoursWarning (utcMoment 2026 12 1 21 40) @?= Nothing
+    , testCase "DST switches on the EU rule (last Sundays of March and October, 01:00 UTC)" $ do
+        timeZoneMinutes (amsterdamTimeZone (utcMoment 2026 3 29 0 59)) @?= 60
+        timeZoneMinutes (amsterdamTimeZone (utcMoment 2026 3 29 1 1)) @?= 120
+        timeZoneMinutes (amsterdamTimeZone (utcMoment 2026 10 25 0 59)) @?= 120
+        timeZoneMinutes (amsterdamTimeZone (utcMoment 2026 10 25 1 1)) @?= 60
+    ]
+
+-- | A UTC moment from calendar parts, for readable test cases.
+utcMoment :: Integer -> Int -> Int -> Int -> Int -> UTCTime
+utcMoment year month day hour minute =
+  UTCTime (fromGregorian year month day) (timeOfDayToTime (TimeOfDay hour minute 0))
 
 -- The claims blob accumulates across a turn's critique rounds and is
 -- chronological, so when it exceeds the budget the critic must keep the NEWEST
